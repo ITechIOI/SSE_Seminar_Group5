@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE with NestJS</title>
+</head>
+<body>
+    <h1>Server-Sent Events (SSE) Demo</h1>
+    <button id="openConnection">Open Connection</button>
+    <button id="closeConnection">Close Connection</button>
+    <ul id="messages"></ul>
+
+    <script>
+        let eventSource;
+
+        // Function to start SSE connection
+        function openSSEConnection() {
+          const lastEventId = localStorage.getItem('lastEventId');
+          if(lastEventId == 50) {
+            localStorage.clear()
+          }
+          const options = lastEventId 
+            ? { headers: { 'Last-Event-ID': lastEventId } }
+            : undefined;
+            eventSource = new EventSource(`http://localhost:3002/api/events${lastEventId ? `?last-event-id=${lastEventId}` : ''}`);
+
+            // Listen to 'customEvent'
+            eventSource.addEventListener('customEvent', (event) => {
+                const message = document.createElement('li');
+                message.innerText = `Custom Event: ${event.data}`;
+                document.getElementById('messages').appendChild(message);
+                localStorage.setItem('lastEventId', event.lastEventId);
+            });
+
+            eventSource.onopen = (event) => {
+              const message = document.createElement('li');
+              message.innerText = "Open connection";
+              document.getElementById('messages').appendChild(message);
+            };
+
+            // Listen to default 'message' event
+            eventSource.onmessage = (event) => {
+                const message = document.createElement('li');
+                message.innerText = `Default Event: ${event.data}`;
+                document.getElementById('messages').appendChild(message);
+                localStorage.setItem('lastEventId', event.lastEventId);
+            };
+
+            // Error handling
+            eventSource.onerror = (error) => {
+              const message = document.createElement('li');
+              message.innerText = `Server is not available`;
+              document.getElementById('messages').appendChild(message);
+            };
+
+            console.log('SSE connection opened');
+        }
+
+        // Automatically open connection on page load
+        openSSEConnection();
+
+        // Close connection on button click
+        document.getElementById('closeConnection').addEventListener('click', () => {
+            if (eventSource) {
+                eventSource.close();
+                const message = document.createElement('li');
+                message.innerText = `Connection is closed`;
+                document.getElementById('messages').appendChild(message);
+                
+            }
+        });
+
+        // Re-open connection on button click
+        document.getElementById('openConnection').addEventListener('click', () => {
+            if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+                openSSEConnection();
+            } else {
+                console.log('Connection is already open');
+            }
+        });
+    </script>
+</body>
+</html>
